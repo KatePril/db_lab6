@@ -18,6 +18,8 @@
 ![image](https://github.com/user-attachments/assets/ffeb1bab-fb49-42e8-86fd-c742c9993589)
 видалення користувача з існуючим id. Оскільки перший запит пройшов успішно і користувача було видалення, другий запит завершився помилкою, адже цього користувача більше немає в базі даних
 
+![image](https://github.com/user-attachments/assets/342e6868-65f9-4819-ac62-9ab77e93b4b9)
+
 
 ![image](https://github.com/user-attachments/assets/ba7de2c9-b65b-439c-8582-944296165219)
 ![image](https://github.com/user-attachments/assets/0dae656d-78d0-4d0d-acea-8955f982bea4)
@@ -30,6 +32,10 @@
 
 ![image](https://github.com/user-attachments/assets/15bb4be3-6000-4b62-89f3-ca2fca4eaa43)
 запит категорії з не існуючим id
+
+
+![image](https://github.com/user-attachments/assets/c569fa51-ca67-40e7-8d84-14121f0d0132)
+
 
 
 ![image](https://github.com/user-attachments/assets/0fa1d338-4bc5-4eca-a11a-85fcc6ec4971)
