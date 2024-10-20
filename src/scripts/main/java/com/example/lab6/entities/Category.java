@@ -1,10 +1,7 @@
 package com.example.lab6.entities;
 
-
 import jakarta.persistence.*;
 import lombok.*;
-
-
 
 @NoArgsConstructor
 @AllArgsConstructor

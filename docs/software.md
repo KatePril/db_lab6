@@ -570,3 +570,732 @@ DELETE FROM surveycategory WHERE id=9;
 
 ### RESTfull сервіс для управління даними
 
+#### Файл pom.xml з залежностями
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.3.4</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.example</groupId>
+	<artifactId>lab6</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>war</packaging>
+	<name>lab6</name>
+	<description>lab 6 for db</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>17</java.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+```
+
+#### Підключення до бази даних
+```
+spring.application.name=lab6
+spring.datasource.url=jdbc:mysql://localhost:3306/db_labs
+spring.datasource.username=root
+spring.datasource.password=1234567890qwerty
+spring.jpa.hibernate.ddl-auto=update
+```
+
+#### DAO-об'єкти, що репрезентують сутності в базі даних
+Користувач
+```java
+package com.example.lab6.entities;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Entity
+@Builder
+@Table(name = "user")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+
+    @Column(name = "email", nullable = false)
+    private String email;
+
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column
+    private String description;
+
+    @Column
+    private int age;
+
+    @Column
+    private String gender;
+
+    @Column
+    private String company;
+
+    @Column(name = "is_admin")
+    private int isAdmin;
+
+}
+```
+
+Опитування
+```java
+package com.example.lab6.entities;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.sql.Date;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Entity
+@Builder
+@Table(name = "survey")
+public class Survey {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column
+    private String description;
+
+    @Column(name = "creation_date", nullable = false)
+    private Date creationDate;
+
+    @Column(name = "close_date")
+    private Date closeDate;
+
+    @Column(name = "is_changable", nullable = false)
+    private int isChangable;
+
+    @Column(name = "is_active", nullable = false)
+    private int isActive;
+
+    @ManyToOne
+    @JoinColumn(
+            name = "owner_id",
+            referencedColumnName = "id",
+            foreignKey = @ForeignKey(name = "fk_survey_user"),
+            nullable = false
+    )
+    private User owner;
+
+}
+```
+
+Категорія
+```java
+package com.example.lab6.entities;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Entity
+@Builder
+@Table(name = "category")
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(
+            name = "parent_id",
+            referencedColumnName = "id",
+            foreignKey = @ForeignKey(name = "fk_category_category")
+    )
+    private Category category;
+}
+```
+
+#### Репозиторії для взаємодії з DAO-об'єктами
+Репозиторій для взаємодії з користувачем
+```java
+package com.example.lab6.repositories;
+
+import com.example.lab6.entities.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    boolean existsUserByEmail(String email);
+}
+```
+
+Репозиторій для взаємодії з опитуванням
+```java
+package com.example.lab6.repositories;
+
+import com.example.lab6.entities.Survey;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface SurveyRepository extends JpaRepository<Survey, Long> {
+}
+```
+
+Репозиторій для взаємодії з категорією
+```java
+package com.example.lab6.repositories;
+
+import com.example.lab6.entities.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+}
+```
+
+#### Сервіси для взаємодії з репозиторіями
+Сервіс для взаємодії з репозиторієм користувача
+```java
+package com.example.lab6.services;
+
+import com.example.lab6.entities.User;
+import com.example.lab6.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public Iterable<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public User getUserById(Long id) throws Exception {
+        if (userRepository.existsById(id)) {
+            return userRepository.findById(id).get();
+        } else {
+            throw new Exception("User not found");
+        }
+    }
+    public User createUser(User user) throws Exception {
+        if (userRepository.existsUserByEmail(user.getEmail())) {
+            throw  new Exception("User with provided email already exists");
+        } else {
+            return userRepository.save(user);
+        }
+    }
+
+    public User changeUserEmail(Long id, String email) throws Exception {
+        if (userRepository.existsUserByEmail(email)) {
+            throw  new Exception("User with provided email already exists");
+        } else {
+            if (userRepository.existsById(id)) {
+                User user = userRepository.findById(id).get();
+                user.setEmail(email);
+                return userRepository.save(user);
+            } else {
+                throw new Exception("User with provided id doesn't exist");
+            }
+        }
+    }
+
+    public User changeUserPassword(Long id, String password) throws Exception {
+        if (userRepository.existsById(id)) {
+            User user = userRepository.findById(id).get();
+            user.setPassword(password);
+            return userRepository.save(user);
+        } else {
+            throw new Exception("User with provided id doesn't exist");
+        }
+    }
+
+    public String deleteUserById(Long id) throws Exception {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+        } else {
+            throw new Exception("Failed to delete user");
+        }
+        return String.format("User %d was deleted", id);
+    }
+
+}
+```
+
+Сервіс для взаємодії з репозиторієм опитування
+```java
+package com.example.lab6.services;
+
+import com.example.lab6.entities.Survey;
+import com.example.lab6.repositories.SurveyRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SurveyService {
+    private final SurveyRepository surveyRepository;
+
+    @Autowired
+    public SurveyService(SurveyRepository surveyRepository) {
+        this.surveyRepository = surveyRepository;
+    }
+
+    public Iterable<Survey> getAllSurveys() {
+        return surveyRepository.findAll();
+    }
+
+    public Survey getSurveyById(Long id) throws Exception {
+        if (surveyRepository.existsById(id)) {
+            return surveyRepository.findById(id).get();
+        } else {
+            throw new Exception("Survey not found");
+        }
+    }
+
+    public Survey createSurvey(Survey survey) {
+        return surveyRepository.save(survey);
+    }
+
+    public Survey changeIsActive(Long id, int isActive) throws Exception {
+        if (surveyRepository.existsById(id)) {
+            Survey survey = surveyRepository.findById(id).get();
+            survey.setIsActive(isActive);
+            return surveyRepository.save(survey);
+        } else {
+            throw new Exception("Survey with provided id doesn't exist");
+        }
+    }
+
+    public Survey changeSurveyTitle(Long id, String title) throws Exception {
+        if (surveyRepository.existsById(id)) {
+            Survey survey = surveyRepository.findById(id).get();
+            survey.setTitle(title);
+            return surveyRepository.save(survey);
+        } else {
+            throw new Exception("Survey with provided id doesn't exist");
+        }
+    }
+
+    public String deleteSurveyById(Long id) throws Exception {
+        if (surveyRepository.existsById(id)) {
+            surveyRepository.deleteById(id);
+        } else {
+            throw new Exception("Failed to delete survey");
+        }
+        return String.format("Survey %d was deleted", id);
+    }
+
+}
+```
+
+Сервіс для взаємодії з репозиторієм категорії
+```java
+package com.example.lab6.services;
+
+import com.example.lab6.entities.Category;
+import com.example.lab6.repositories.CategoryRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class CategoryService {
+    private final CategoryRepository categoryRepository;
+
+    @Autowired
+    public CategoryService(CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
+    }
+
+    public Iterable<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
+
+    public Category getCategoryById(Long id) throws Exception {
+        if (categoryRepository.existsById(id)) {
+            return categoryRepository.findById(id).get();
+        } else {
+            throw  new Exception("Category not found");
+        }
+    }
+
+    public Category createCategory(Category category) {
+        return categoryRepository.save(category);
+    }
+
+    public Category updateCategoryName(Long id, String name) throws Exception {
+        if (categoryRepository.existsById(id)) {
+            Category category = categoryRepository.findById(id).get();
+            category.setName(name);
+            return categoryRepository.save(category);
+        } else {
+            throw new Exception("Category with provided id doesn't exist");
+        }
+    }
+
+    public String deleteCategoryById(Long id) throws Exception {
+        if (categoryRepository.existsById(id)) {
+            categoryRepository.deleteById(id);
+        } else {
+            throw new Exception("Failed to delete category");
+        }
+        return String.format("Category %d was deleted", id);
+    }
+}
+```
+
+#### Контроллери для взаємодії з сервісами
+Контроллер для взаємодії з сервісом користувача
+```java
+package com.example.lab6.controllers;
+
+import com.example.lab6.entities.User;
+import com.example.lab6.services.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(value = "/users")
+public class UserController {
+
+    private final UserService userService;
+
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            return ResponseEntity.ok(userService.getAllUsers());
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getUser(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(userService.getUserById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createUser(@RequestBody User user) {
+        try {
+            return ResponseEntity.ok(userService.createUser(user));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PutMapping("/change_email")
+    public ResponseEntity<?> updateEmail(@RequestParam Long id, @RequestParam String email) {
+        try {
+            return ResponseEntity.ok(userService.changeUserEmail(id, email));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PutMapping("/change_password")
+    public ResponseEntity<?> updatePassword(@RequestParam Long id, @RequestParam String password) {
+        try {
+            return ResponseEntity.ok(userService.changeUserPassword(id, password));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(userService.deleteUserById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+}
+```
+
+Контроллер для взаємодії з сервісом опитування
+```java
+package com.example.lab6.controllers;
+
+import com.example.lab6.entities.Survey;
+import com.example.lab6.services.SurveyService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(value = "/surveys")
+public class SurveyController {
+    private final SurveyService surveyService;
+
+    @Autowired
+    public SurveyController(SurveyService surveyService) {
+        this.surveyService = surveyService;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllSurvey() {
+        try {
+            return ResponseEntity.ok(surveyService.getAllSurveys());
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getSurvey(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(surveyService.getSurveyById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createSurvey(@RequestBody Survey survey) {
+        try {
+            return ResponseEntity.ok(surveyService.createSurvey(survey));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PutMapping("{id}/update_is_active/{isActive}")
+    public ResponseEntity<?> updateIsActive(@PathVariable Long id, @PathVariable int isActive) {
+        try {
+            if (isActive == 0 || isActive == 1) {
+                return ResponseEntity.ok(surveyService.changeIsActive(id, isActive));
+
+            } else {
+                throw new Exception("IsActive value should be either 0 or 1");
+            }
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PutMapping("/update_title")
+    public ResponseEntity<?> updateEmail(@RequestParam Long id, @RequestParam String title) {
+        try {
+            return ResponseEntity.ok(surveyService.changeSurveyTitle(id, title));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSurvey(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(surveyService.deleteSurveyById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+}
+```
+
+Контроллер для взаємодії з сервісом категорії
+```java
+package com.example.lab6.controllers;
+
+import com.example.lab6.entities.Category;
+import com.example.lab6.services.CategoryService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(value = "/categories")
+public class CategoryController {
+    private final CategoryService categoryService;
+
+    @Autowired
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllCategory() {
+        try {
+            return ResponseEntity.ok(categoryService.getAllCategories());
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getCategory(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(categoryService.getCategoryById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        try {
+            return ResponseEntity.ok(categoryService.createCategory(category));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @PutMapping("/change_name")
+    public ResponseEntity<?> changeCategoryName(@RequestParam Long id, @RequestParam String name) {
+        try {
+            return ResponseEntity.ok(categoryService.updateCategoryName(id, name));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(categoryService.deleteCategoryById(id));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+}
+```
+
+#### Сервлет ініціалізатор
+```java
+package com.example.lab6;
+
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+public class ServletInitializer extends SpringBootServletInitializer {
+
+	@Override
+	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+		return application.sources(Lab6Application.class);
+	}
+
+}
+```
+
+#### Lab6Application.java - вхідна точка в програму
+```java
+package com.example.lab6;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+@SpringBootApplication
+@EnableJpaRepositories(basePackages = "com.example.lab6.repositories")
+public class Lab6Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Lab6Application.class, args);
+	}
+
+}
+```
